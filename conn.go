@@ -179,8 +179,11 @@ func (c *Conn) Connect() (*IdentifyResponse, error) {
 
 	c.wg.Add(2)
 	atomic.StoreInt32(&c.readLoopRunning, 1)
+
+	// 异步读写数据
 	go c.readLoop()
 	go c.writeLoop()
+
 	return resp, nil
 }
 
@@ -479,6 +482,7 @@ func (c *Conn) auth(secret string) error {
 	return nil
 }
 
+// 异步读取数据
 func (c *Conn) readLoop() {
 	delegate := &connMessageDelegate{c}
 	for {

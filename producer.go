@@ -25,7 +25,7 @@ type producerConn interface {
 type Producer struct {
 	id     int64
 	addr   string
-	conn   producerConn
+	conn   producerConn // 底层连接
 	config Config
 
 	logger   logger
@@ -246,6 +246,7 @@ func (w *Producer) sendCommandAsync(cmd *Command, doneChan chan *ProducerTransac
 		Args:     args,
 	}
 
+	// 如何异步处理呢？
 	select {
 	case w.transactionChan <- t:
 	case <-w.exitChan:
@@ -275,6 +276,7 @@ func (w *Producer) connect() error {
 
 	logger, logLvl := w.getLogger()
 
+	// 底层连接的实现:
 	w.conn = NewConn(w.addr, &w.config, &producerConnDelegate{w})
 	w.conn.SetLogger(logger, logLvl, fmt.Sprintf("%3d (%%s)", w.id))
 
@@ -309,7 +311,10 @@ func (w *Producer) router() {
 	for {
 		select {
 		case t := <-w.transactionChan:
+			// 异步写数据
 			w.transactions = append(w.transactions, t)
+
+			// 交给底层的Conn来处理
 			err := w.conn.WriteCommand(t.cmd)
 			if err != nil {
 				w.log(LogLevelError, "(%s) sending command - %s", w.conn.String(), err)
